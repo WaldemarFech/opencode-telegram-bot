@@ -108,6 +108,10 @@ export const config = {
   files: {
     maxFileSizeKb: parseInt(getEnvVar("CODE_FILE_MAX_SIZE_KB", false) || "100", 10),
   },
+  extensions: {
+    handlersDir: getEnvVar("EXTENSION_HANDLERS_DIR", false),
+    stateDir: getEnvVar("EXTENSION_STATE_DIR", false),
+  },
   stt: {
     apiUrl: getEnvVar("STT_API_URL", false),
     apiKey: getEnvVar("STT_API_KEY", false),

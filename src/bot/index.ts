@@ -43,6 +43,7 @@ import { handleModelSelect, showModelSelectionMenu } from "./handlers/model.js";
 import { handleVariantSelect, showVariantSelectionMenu } from "./handlers/variant.js";
 import { handleContextButtonPress, handleCompactConfirm } from "./handlers/context.js";
 import { handleInlineMenuCancel } from "./handlers/inline-menu.js";
+import { extensionManager } from "../extensions/extension-manager.js";
 import { questionManager } from "../question/manager.js";
 import { interactionManager } from "../interaction/manager.js";
 import { clearAllInteractionState } from "../interaction/cleanup.js";
@@ -919,6 +920,12 @@ export function createBot(): Bot<Context> {
   bot.command("rename", renameCommand);
   bot.command("commands", commandsCommand);
 
+  // Extension command handler - must be before unknownCommandMiddleware
+  bot.on("message:text", async (ctx, next) => {
+    const handled = await extensionManager.handleCommand(ctx, bot);
+    if (!handled) await next();
+  });
+
   bot.on("message:text", unknownCommandMiddleware);
 
   bot.on("callback_query:data", async (ctx) => {
@@ -944,9 +951,10 @@ export function createBot(): Bot<Context> {
       const handledTaskList = await handleTaskListCallback(ctx);
       const handledRenameCancel = await handleRenameCancel(ctx);
       const handledCommands = await handleCommandsCallback(ctx, { bot, ensureEventSubscription });
+      const handledExtension = await extensionManager.handleCallback(ctx, bot);
 
       logger.debug(
-        `[Bot] Callback handled: inlineCancel=${handledInlineCancel}, session=${handledSession}, project=${handledProject}, question=${handledQuestion}, permission=${handledPermission}, agent=${handledAgent}, model=${handledModel}, variant=${handledVariant}, compactConfirm=${handledCompactConfirm}, task=${handledTask}, taskList=${handledTaskList}, rename=${handledRenameCancel}, commands=${handledCommands}`,
+        `[Bot] Callback handled: inlineCancel=${handledInlineCancel}, session=${handledSession}, project=${handledProject}, question=${handledQuestion}, permission=${handledPermission}, agent=${handledAgent}, model=${handledModel}, variant=${handledVariant}, compactConfirm=${handledCompactConfirm}, task=${handledTask}, taskList=${handledTaskList}, rename=${handledRenameCancel}, commands=${handledCommands}, extension=${handledExtension}`,
       );
 
       if (
@@ -962,7 +970,8 @@ export function createBot(): Bot<Context> {
         !handledTask &&
         !handledTaskList &&
         !handledRenameCancel &&
-        !handledCommands
+        !handledCommands &&
+        !handledExtension
       ) {
         logger.debug("Unknown callback query:", ctx.callbackQuery?.data);
         await ctx.answerCallbackQuery({ text: t("callback.unknown_command") });

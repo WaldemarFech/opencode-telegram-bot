@@ -10,6 +10,7 @@ import { reconcileStoredModelSelection } from "../model/manager.js";
 import { getRuntimeMode } from "../runtime/mode.js";
 import { getRuntimePaths } from "../runtime/paths.js";
 import { logger } from "../utils/logger.js";
+import { extensionManager } from "../extensions/extension-manager.js";
 
 async function getBotVersion(): Promise<string> {
   try {
@@ -41,6 +42,7 @@ export async function startBotApp(): Promise<void> {
 
   const bot = createBot();
   await scheduledTaskRuntime.initialize(bot);
+  await extensionManager.initialize(bot);
 
   const webhookInfo = await bot.api.getWebhookInfo();
   if (webhookInfo.url) {
@@ -50,8 +52,9 @@ export async function startBotApp(): Promise<void> {
   }
 
   await bot.start({
-    onStart: (botInfo) => {
+    onStart: async (botInfo) => {
       logger.info(`Bot @${botInfo.username} started!`);
+      await extensionManager.startJobs();
     },
   });
 }
